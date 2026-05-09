@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外采功能机项目分析报告</title>
+<style>
+  /* ========== 基础重置 & 变量 ========== */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #111827;
+    --bg-card: #161f33;
+    --bg-card-hover: #1c2742;
+    --border-color: rgba(56, 189, 248, 0.15);
+    --border-glow: rgba(56, 189, 248, 0.4);
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-cyan: #38bdf8;
+    --accent-blue: #3b82f6;
+    --accent-purple: #8b5cf6;
+    --accent-green: #22c55e;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --gradient-main: linear-gradient(135deg, #38bdf8 0%, #8b5cf6 100%);
+    --gradient-card: linear-gradient(145deg, rgba(56,189,248,0.08) 0%, rgba(139,92,246,0.05) 100%);
+    --shadow-card: 0 4px 24px rgba(0,0,0,0.3), 0 0 1px rgba(56,189,248,0.2);
+    --font-main: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-main);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ========== 背景装饰 ========== */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background:
+      radial-gradient(ellipse 600px 600px at 20% 20%, rgba(56,189,248,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 500px 500px at 80% 60%, rgba(139,92,246,0.05) 0%, transparent 70%),
+      radial-gradient(ellipse 400px 400px at 50% 90%, rgba(34,197,94,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* 网格背景 */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ========== 布局容器 ========== */
+  .report-container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ========== 头部区域 ========== */
+  .report-header {
+    text-align: center;
+    padding: 60px 0 50px;
+    position: relative;
+  }
+
+  .report-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 2px;
+    background: var(--gradient-main);
+    border-radius: 1px;
+  }
+
+  .report-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.25);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+
+  .report-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--accent-cyan); }
+    50% { opacity: 0.4; box-shadow: 0 0 8px var(--accent-cyan); }
+  }
+
+  .report-header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    background: var(--gradient-main);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+
+  .report-header .subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  .report-meta {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  .report-meta .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .meta-item .meta-icon {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    background: rgba(56,189,248,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+
+  /* ========== 通用卡片 ========== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-card);
+    transition: border-color 0.3s, transform 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent);
+  }
+
+  .card:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-2px);
+  }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .card-title .icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .icon-blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+  .icon-cyan { background: rgba(56,189,248,0.15); color: var(--accent-cyan); }
+  .icon-purple { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+  .icon-green { background: rgba(34,197,94,0.15); color: var(--accent-green); }
+  .icon-amber { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+  .icon-red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+
+  /* ========== 章节标题 ========== */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 48px 0 28px;
+    color: var(--text-primary);
+  }
+
+  .section-title .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    background: var(--gradient-main);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-color), transparent);
+    margin: 8px 0 0;
+  }
+
+  /* ========== KPI 指标卡 ========== */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 22px;
+    text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+
+  .kpi-item:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-2px);
+  }
+
+  .kpi-value {
+    font-size: 32px;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    margin-bottom: 4px;
+  }
+
+  .kpi-value.cyan { color: var(--accent-cyan); }
+  .kpi-value.green { color: var(--accent-green); }
+  .kpi-value.amber { color: var(--accent-amber); }
+  .kpi-value.purple { color: var(--accent-purple); }
+
+  .kpi-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* ========== 表格样式 ========== */
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    background: rgba(56,189,248,0.08);
+    color: var(--accent-cyan);
+    font-weight: 600;
+    padding: 14px 16px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  tbody tr:hover td {
+    background: rgba(56,189,248,0.04);
+    color: var(--text-primary);
+  }
+
+  tbody td:first-child {
+    color: var(--text-primary);
+    font-weight: 600;
+    white-space: nowrap;
+    background: rgba(56,189,248,0.03);
+  }
+
+  .highlight { color: var(--accent-cyan) !important; font-weight: 700; }
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag-green { background: rgba(34,197,94,0.15); color: var(--accent-green); }
+  .tag-amber { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+  .tag-red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+  .tag-cyan { background: rgba(56,189,248,0.15); color: var(--accent-cyan); }
+  .tag-purple { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+
+  /* ========== 列表样式 ========== */
+  .feature-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .feature-list li {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .feature-list .list-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .feature-list .list-content h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .feature-list .list-content p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ========== 对比产品卡片 ========== */
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .product-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    transition: border-color 0.3s, transform 0.3s;
+    position: relative;
+  }
+
+  .product-card:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-3px);
+  }
+
+  .product-card .brand {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .product-card .model {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+
+  .spec-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+  }
+
+  .spec-row:last-child { border-bottom: none; }
+
+  .spec-row .label { color: var(--text-muted); }
+  .spec-row .value { color: var(--text-secondary); font-weight: 500; }
+
+  .product-card .price-tag {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+  }
+
+  .price-tag .price {
+    font-size: 28px;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    color: var(--accent-green);
+  }
+
+  .price-tag .price-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ========== 卖点卡片 ========== */
+  .selling-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+
+  .selling-card {
+    background: var(--gradient-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+
+  .selling-card:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-3px);
+  }
+
+  .selling-card .selling-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+
+  .selling-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .selling-card p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 14px;
+  }
+
+  .cost-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--accent-green);
+    font-weight: 600;
+  }
+
+  /* ========== 策略条形图 ========== */
+  .bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  .bar-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bar-label {
+    width: 120px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 28px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    transition: width 1s ease;
+  }
+
+  /* ========== SWOT 样式 ========== */
+  .swot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .swot-item {
+    border-radius: 10px;
+    padding: 22px;
+    border: 1px solid;
+  }
+
+  .swot-item h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .swot-item ul {
+    list-style: none;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .swot-item ul li::before {
+    content: '›';
+    margin-right: 8px;
+    font-weight: 700;
+  }
+
+  .swot-s { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.2); }
+  .swot-s h4 { color: var(--accent-green); }
+  .swot-s ul li::before { color: var(--accent-green); }
+
+  .swot-w { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); }
+  .swot-w h4 { color: var(--accent-red); }
+  .swot-w ul li::before { color: var(--accent-red); }
+
+  .swot-o { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.2); }
+  .swot-o h4 { color: var(--accent-cyan); }
+  .swot-o ul li::before { color: var(--accent-cyan); }
+
+  .swot-t { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.2); }
+  .swot-t h4 { color: var(--accent-amber); }
+  .swot-t ul li::before { color: var(--accent-amber); }
+
+  /* ========== 结论区域 ========== */
+  .conclusion-box {
+    background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(139,92,246,0.06));
+    border: 1px solid rgba(56,189,248,0.2);
+    border-radius: 14px;
+    padding: 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .conclusion-box::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle at center, rgba(56,189,248,0.05), transparent 60%);
+    animation: rotate-bg 20s linear infinite;
+  }
+
+  @keyframes rotate-bg {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .conclusion-box h3 {
+    position: relative;
+    font-size: 22px;
+    font-weight: 700;
+    background: var(--gradient-main);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .conclusion-box p {
+    position: relative;
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  /* ========== 页脚 ========== */
+  .report-footer {
+    text-align: center;
+    padding: 40px 0 20px;
+    color: var(--text-muted);
+    font-size: 12px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    margin-top: 40px;
+  }
+
+  /* ========== 响应式 ========== */
+  @media (max-width: 768px) {
+    .report-container { padding: 20px 16px 60px; }
+    .report-header h1 { font-size: 26px; }
+    .section-title { font-size: 20px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .product-grid { grid-template-columns: 1fr; }
+    .selling-grid { grid-template-columns: 1fr; }
+    .swot-grid { grid-template-columns: 1fr; }
+    .bar-label { width: 80px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="report-container">
+
+  <!-- ===== 头部 ===== -->
+  <header class="report-header">
+    <div class="report-badge">ANALYSIS REPORT</div>
+    <h1>外采功能机项目分析报告</h1>
+    <p class="subtitle">低成本三防翻盖功能机 — 产品策略与竞品对标</p>
+    <div class="report-meta">
+      <div class="meta-item">
+        <span class="meta-icon">📋</span>
+        深圳市冠群电子有限公司
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon">📅</span>
+        2026年5月
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon">🏷️</span>
+        4G LTE 三防翻盖机
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== 1. 核心指标 ===== -->
+  <div class="section-title">
+    <span class="num">1</span> 核心定位指标
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="kpi-grid" style="margin-top: 24px;">
+    <div class="kpi-item">
+      <div class="kpi-value cyan">$89</div>
+      <div class="kpi-label">目标零售价</div>
+    </div>
+    <div class="kpi-item">
+      <div class="kpi-value green">≤$35</div>
+      <div class="kpi-label">BOM 成本目标</div>
+    </div>
+    <div class="kpi-item">
+      <div class="kpi-value amber">IP68</div>
+      <div class="kpi-label">防护等级</div>
+    </div>
+    <div class="kpi-item">
+      <div class="kpi-value purple">4G</div>
+      <div class="kpi-label">网络制式</div>
+    </div>
+  </div>
+
+  <!-- ===== 2. 竞品对标分析 ===== -->
+  <div class="section-title">
+    <span class="num">2</span> 竞品对标分析
+  </div>
+  <div class="section-divider"></div>
+
+  <!-- 2.1 产品卡片 -->
+  <div class="product-grid" style="margin-top: 24px;">
+    <div class="product-card">
+      <div class="brand">AGM</div>
+      <div class="model">M8 FLIP</div>
+      <div class="spec-row"><span class="label">处理器</span><span class="value">展锐 T107</span></div>
+      <div class="spec-row"><span class="label">系统</span><span class="value">RTOS</span></div>
+      <div class="spec-row"><span class="label">屏幕</span><span class="value">2.8" 240×320</span></div>
+      <div class="spec-row"><span class="label">电池</span><span class="value">1500mAh</span></div>
+      <div class="spec-row"><span class="label">重量</span><span class="value">162g</span></div>
+      <div class="spec-row"><span class="label">防护</span><span class="value"><span class="tag tag-green">IP68/IP69K/MIL-STD</span></span></div>
+      <div class="spec-row"><span class="label">尺寸</span><span class="value">115×62×23mm</span></div>
+      <div class="price-tag">
+        <div class="price">$79.9</div>
+        <div class="price-label">Amazon 售价</div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="brand">HMD / Nokia</div>
+      <div class="model">2660 Flip 4G</div>
+      <div class="spec-row"><span class="label">处理器</span><span class="value">Unisoc T107</span></div>
+      <div class="spec-row"><span class="label">系统</span><span class="value">S30+</span></div>
+      <div class="spec-row"><span class="label">屏幕</span><span class="value">2.8"+1.77"</span></div>
+      <div class="spec-row"><span class="label">电池</span><span class="value">1450mAh</span></div>
+      <div class="spec-row"><span class="label">重量</span><span class="value">123g</span></div>
+      <div class="spec-row"><span class="label">防护</span><span class="value"><span class="tag tag-amber">未标注</span></span></div>
+      <div class="spec-row"><span class="label">尺寸</span><span class="value">108×55×19mm</span></div>
+      <div class="price-tag">
+        <div class="price">$149.9</div>
+        <div class="price-label">Amazon 售价</div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="brand">Doro</div>
+      <div class="model">Leva L20</div>
+      <div class="spec-row"><span class="label">处理器</span><span class="value">—</span></div>
+      <div class="spec-row"><span class="label">系统</span><span class="value">RTOS</span></div>
+      <div class="spec-row"><span class="label">屏幕</span><span class="value">2.8"</span></div>
+      <div class="spec-row"><span class="label">电池</span><span class="value">1150mAh</span></div>
+      <div class="spec-row"><span class="label">重量</span><span class="value">132g</span></div>
+      <div class="spec-row"><span class="label">防护</span><span class="value"><span class="tag tag-amber">IP54</span></span></div>
+      <div class="spec-row"><span class="label">尺寸</span><span class="value">108×57×20mm</span></div>
+      <div class="price-tag">
+        <div class="price">$128</div>
+        <div class="price-label">Amazon 售价</div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="brand">Sonim</div>
+      <div class="model">X3Pplus</div>
+      <div class="spec-row"><span class="label">处理器</span><span class="value">—</span></div>
+      <div class="spec-row"><span class="label">系统</span><span class="value">Android 11</span></div>
+      <div class="spec-row"><span class="label">屏幕</span><span class="value">2.8"+1.3"</span></div>
+      <div class="spec-row"><span class="label">电池</span><span class="value">2300mAh</span></div>
+      <div class="spec-row"><span class="label">重量</span><span class="value">220g</span></div>
+      <div class="spec-row"><span class="label">防护</span><span class="value"><span class="tag tag-green">IP68/MIL-STD</span></span></div>
+      <div class="spec-row"><span class="label">尺寸</span><span class="value">116×60×28mm</span></div>
+      <div class="price-tag">
+        <div class="price" style="color: var(--text-muted);">—</div>
+        <div class="price-label">价格区间 $400+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2.2 参数对比表 -->
+  <div class="card" style="margin-top: 24px;">
+    <div class="card-title">
+      <span class="icon icon-cyan">📊</span>
+      关键参数横向对比
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>参数项</th>
+            <th>AGM M8 FLIP</th>
+            <th>Nokia 2660 Flip</th>
+            <th>Doro Leva L20</th>
+            <th>Sonim X3Pplus</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>售价</td>
+            <td class="highlight">$79.9</td>
+            <td>$149.9</td>
+            <td>$128</td>
+            <td>$400+</td>
+          </tr>
+          <tr>
+            <td>CPU</td>
+            <td>展锐 T107</td>
+            <td>Unisoc T107</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>操作系统</td>
+            <td><span class="tag tag-cyan">RTOS</span></td>
+            <td>S30+</td>
+            <td><span class="tag tag-cyan">RTOS</span></td>
+            <td><span class="tag tag-purple">Android 11</span></td>
+          </tr>
+          <tr>
+            <td>内存</td>
+            <td>48M / 128M</td>
+            <td>—</td>
+            <td>—</td>
+            <td>2GB / 16GB</td>
+          </tr>
+          <tr>
+            <td>屏幕</td>
+            <td>2.8" 240×320</td>
+            <td>2.8"+1.77"</td>
+            <td>2.8"</td>
+            <td>2.8"+1.3"</td>
+          </tr>
+          <tr>
+            <td>电池</td>
+            <td>1500mAh</td>
+            <td>1450mAh</td>
+            <td>1150mAh</td>
+            <td class="highlight">2300mAh</td>
+          </tr>
+          <tr>
+            <td>蓝牙</td>
+            <td>5.0</td>
+            <td>4.2</td>
+            <td>—</td>
+            <td>5.0</td>
+          </tr>
+          <tr>
+            <td>防护等级</td>
+            <td><span class="tag tag-green">IP68/69K/MIL-STD</span></td>
+            <td><span class="tag tag-amber">未标注</span></td>
+            <td><span class="tag tag-amber">IP54</span></td>
+            <td><span class="tag tag-green">IP68/MIL-STD</span></td>
+          </tr>
+          <tr>
+            <td>充电接口</td>
+            <td>Type-C + 3.5mm</td>
+            <td>micro USB + 3.5mm</td>
+            <td>Type-C + 3.5mm</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>特色功能</td>
+            <td>双喇叭 104dB / EZFM / 座充</td>
+            <td>FM</td>
+            <td>—</td>
+            <td>FM</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== 3. 产品策略 ===== -->
+  <div class="section-title">
+    <span class="num">3</span> 产品策略方案
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card" style="margin-top: 24px;">
+    <div class="card-title">
+      <span class="icon icon-blue">🎯</span>
+      成本重组 — 把钱花在刀刃上
+    </div>
+    <ul class="feature-list">
+      <li>
+        <div class="list-icon icon-cyan">⚡</div>
+        <div class="list-content">
+          <h4>成熟 4G LTE 平台</h4>
+          <p>采用紫光展锐 T107 或 MTK 6731，方案成熟、成本极低，支持北美主要运营商频段，无需昂贵的卫星或双模授权</p>
+        </div>
+      </li>
+      <li>
+        <div class="list-icon icon-green">🛡️</div>
+        <div class="list-content">
+          <h4>翻盖结构溢价</h4>
+          <p>利用翻盖保护屏幕的特性，省去加厚大猩猩玻璃，改用普通钢化玻璃 + 高出屏幕边缘的软胶包裹方案，大幅降低屏幕成本</p>
+        </div>
+      </li>
+      <li>
+        <div class="list-icon icon-amber">🔋</div>
+        <div class="list-content">
+          <h4>务实电池策略</h4>
+          <p>放弃 5000mAh 超大电芯，采用 2500-3000mAh 可拆卸电池，功能机足够支撑 3-5 天续航，"可拆卸"对户外用户是核心吸引力</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ===== 4. 三大爆款卖点 ===== -->
+  <div class="section-title">
+    <span class="num">4</span> 三大低成本高感知爆款卖点
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="selling-grid" style="margin-top: 24px;">
+    <div class="selling-card">
+      <div class="selling-badge" style="background:rgba(245,158,11,0.12);color:var(--accent-amber);">
+        💡 SELLING POINT A
+      </div>
+      <h3>Super Torch 物理手电筒</h3>
+      <p>在翻盖顶部设计独立大口径强光手电筒，侧面专用物理滑块开关，即使关机也能推开即亮。将手机打造成"带通讯功能的强光手电"，精准命中欧美户外用户的 Flashlight 执念。</p>
+      <div class="cost-tag">💰 增量成本 &lt; $1</div>
+    </div>
+
+    <div class="selling-card">
+      <div class="selling-badge" style="background:rgba(139,92,246,0.12);color:var(--accent-purple);">
+        🔊 SELLING POINT B
+      </div>
+      <h3>Outdoor Radio 极致音量收音机</h3>
+      <p>采用大尺寸"低音炮"扬声器，内置免耳机 FM 天线。对工地、农场或徒步场景而言，这就是一个便携收音机 + 高音量工具机，满足"声音大、耐摔、续航久"三大底层需求。</p>
+      <div class="cost-tag">💰 增量成本极低</div>
+    </div>
+
+    <div class="selling-card">
+      <div class="selling-badge" style="background:rgba(56,189,248,0.12);color:var(--accent-cyan);">
+        🔗 SELLING POINT C
+      </div>
+      <h3>Rugged Keychain 坚固挂绳环</h3>
+      <p>在转轴处设计极其坚固、超大金属挂绳环。欧美用户喜欢将三防机挂在登山包或工装裤上，挂绳环不仅是功能设计，更传递"可靠"的视觉信号。</p>
+      <div class="cost-tag">💰 增量成本 ≈ $0</div>
+    </div>
+  </div>
+
+  <!-- ===== 5. 价格竞争力分析 ===== -->
+  <div class="section-title">
+    <span class="num">5</span> 价格竞争力分析
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card" style="margin-top: 24px;">
+    <div class="card-title">
+      <span class="icon icon-green">💲</span>
+      竞品价格区间对比
+    </div>
+    <div class="bar-chart">
+      <div class="bar-item">
+        <div class="bar-label">我方产品</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:18%;background:linear-gradient(90deg,#22c55e,#16a34a);">
+            $89 目标
+          </div>
+        </div>
+      </div>
+      <div class="bar-item">
+        <div class="bar-label">AGM M8 FLIP</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:16%;background:linear-gradient(90deg,#38bdf8,#0ea5e9);">
+            $79.9
+          </div>
+        </div>
+      </div>
+      <div class="bar-item">
+        <div class="bar-label">Doro L20</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:26%;background:linear-gradient(90deg,#f59e0b,#d97706);">
+            $128
+          </div>
+        </div>
+      </div>
+      <div class="bar-item">
+        <div class="bar-label">Nokia 2660</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:30%;background:linear-gradient(90deg,#8b5cf6,#7c3aed);">
+            $149.9
+          </div>
+        </div>
+      </div>
+      <div class="bar-item">
+        <div class="bar-label">Sonim X3P+</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:80%;background:linear-gradient(90deg,#ef4444,#dc2626);">
+            $400+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:20px;padding:16px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:8px;">
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.8;">
+        <strong style="color:var(--accent-green);">✅ 竞争优势分析：</strong>
+        我方产品锁定 <strong>$79-$99 冲动消费区间</strong>，仅为大牌（CAT、摩托罗拉、Sonim）价格的 1/3~1/2。
+        在同等 IP68 防护等级下，价格优势显著。核心理念：<em>"外观像 $200 专业装备，BOM 控制在 $35 以内"</em>。
+      </p>
+    </div>
+  </div>
+
+  <!-- ===== 6. 市场切入策略 ===== -->
+  <div class="section-title">
+    <span class="num">6</span> 市场切入策略
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card" style="margin-top: 24px;">
+    <div class="card-title">
+      <span class="icon icon-purple">🌍</span>
+      欧美市场销售切入点
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
+      <div style="padding:20px;background:rgba(56,189,248,0.04);border-radius:10px;border:1px solid rgba(56,189,248,0.1);">
+        <h4 style="font-size:14px;color:var(--accent-cyan);margin-bottom:10px;">🏷️ 品类定位</h4>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+          在欧美消费逻辑中，"三防翻盖机"不是手机，而是 <strong style="color:var(--text-primary);">EDC Gear（日常携带装备）</strong>。
+          这决定了营销语言和渠道选择。
+        </p>
+      </div>
+
+      <div style="padding:20px;background:rgba(139,92,246,0.04);border-radius:10px;border:1px solid rgba(139,92,246,0.1);">
+        <h4 style="font-size:14px;color:var(--accent-purple);margin-bottom:10px;">🎬 场景化营销</h4>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+          宣传视频场景：雨天维修汽车底部、森林徒步、泥泞工地、手套操作。
+          <strong style="color:var(--text-primary);">远离办公室场景</strong>，直击户外工作场景。
+        </p>
+      </div>
+
+      <div style="padding:20px;background:rgba(34,197,94,0.04);border-radius:10px;border:1px solid rgba(34,197,94,0.1);">
+        <h4 style="font-size:14px;color:var(--accent-green);margin-bottom:10px;">🏪 分销渠道</h4>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+          Amazon 为主，重点拓展：<strong style="color:var(--text-primary);">户外用品店、加油站便利店、五金连锁超市</strong>（Home Depot / Lowe's）等线下渠道。
+        </p>
+      </div>
+
+      <div style="padding:20px;background:rgba(245,158,11,0.04);border-radius:10px;border:1px solid rgba(245,158,11,0.1);">
+        <h4 style="font-size:14px;color:var(--accent-amber);margin-bottom:10px;">📣 卖点话术</h4>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+          <strong style="color:var(--accent-amber);font-size:15px;">"Built for Work, Designed for Life"</strong><br>
+          为工作而生，为生活设计。突出工具属性，弱化手机属性。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 7. SWOT 分析 ===== -->
+  <div class="section-title">
+    <span class="num">7</span> SWOT 战略分析
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="swot-grid" style="margin-top: 24px;">
+    <div class="swot-item swot-s">
+      <h4>💪 Strengths 优势</h4>
+      <ul>
+        <li>极致成本控制，BOM ≤ $35，高毛利空间</li>
+        <li>IP68/IP69K 三防等级，远超同价位竞品</li>
+        <li>翻盖结构天然保护屏幕，降低维修率</li>
+        <li>差异化卖点（手电筒/大喇叭/挂绳环）成本低感知强</li>
+      </ul>
+    </div>
+    <div class="swot-item swot-w">
+      <h4>⚠️ Weaknesses 劣势</h4>
+      <ul>
+        <li>RTOS 功能有限，无法运行安卓应用</li>
+        <li>品牌知名度为零，需要从零建立信任</li>
+        <li>功能机市场整体萎缩，用户群体有限</li>
+        <li>依赖外采方案，自主可控性不足</li>
+      </ul>
+    </div>
+    <div class="swot-item swot-o">
+      <h4>🚀 Opportunities 机会</h4>
+      <ul>
+        <li>$79-$99 冲动消费区间竞品薄弱</li>
+        <li>欧美 EDC Gear 市场持续增长</li>
+        <li>户外/工地/老年群体仍有稳定需求</li>
+        <li>Home Depot / Lowe's 等线下渠道未被充分开发</li>
+      </ul>
+    </div>
+    <div class="swot-item swot-t">
+      <h4>🔥 Threats 威胁</h4>
+      <ul>
+        <li>AGM M8 FLIP 定价 $79.9，直接价格竞争</li>
+        <li>低价智能机持续下探，挤压功能机生存空间</li>
+        <li>运营商补贴政策变化风险</li>
+        <li>欧美认证（FCC/CE）和专利成本可能超预期</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== 8. 结论 ===== -->
+  <div class="section-title">
+    <span class="num">8</span> 结论与建议
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="conclusion-box" style="margin-top: 24px;">
+    <h3>产品成功关键</h3>
+    <p>
+      这款低成本三防翻盖功能机的核心竞争力在于：<strong>不拼性能，拼信心感</strong>。
+      只要防摔、防水、喇叭响、手电亮，让用户"握在手里像块石头一样结实"，就能在欧美工具机市场成为稳赚不赔的单品。
+    </p>
+    <br>
+    <p>
+      <strong>核心公式：</strong>外观像 $200 的专业装备 × BOM ≤ $35 × 零售价 $89 × 三大差异化卖点 = <span style="color:var(--accent-green);font-weight:700;">高毛利爆款</span>
+    </p>
+  </div>
+
+  <!-- ===== 页脚 ===== -->
+  <footer class="report-footer">
+    <p>深圳市冠群电子有限公司 · 外采功能机项目分析报告 · 2026年5月</p>
+    <p style="margin-top:4px;color:rgba(100,116,139,0.5);">数据来源：低成本功能机方案.docx / 外采功能机项目对标分析表.xlsx</p>
+  </footer>
+
+</div>
+
+</body>
+</html>

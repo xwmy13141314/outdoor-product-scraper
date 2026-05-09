@@ -1,0 +1,66 @@
+-- 添加结构化数据字段到现有表
+alter table product_scrapes 
+add column if not exists product_data jsonb,
+add column if not exists page_type text check (page_type in ('product_list', 'product_detail', 'unknown')),
+add column if not exists products_count int default 0;
+
+-- 创建产品信息表（用于存储解析后的产品）
+create table if not exists products (
+  id uuid primary key default gen_random_uuid(),
+  scrape_id uuid references product_scrapes(id) on delete cascade,
+  name text not null,
+  brand text,
+  image_url text,
+  detail_url text,
+  
+  -- 基本规格
+  release_date text,
+  dimensions text,
+  weight text,
+  display_size text,
+  display_resolution text,
+  
+  -- 性能参数
+  os text,
+  chipset text,
+  cpu text,
+  gpu text,
+  ram text,
+  storage text,
+  
+  -- 相机
+  main_camera text,
+  selfie_camera text,
+  video text,
+  
+  -- 电池
+  battery text,
+  charging text,
+  
+  -- 网络
+  network text,
+  
+  -- 其他特性
+  features jsonb,
+  
+  created_at timestamptz default now()
+);
+
+-- 启用 RLS
+alter table products enable row level security;
+
+-- 创建策略
+create policy "Allow public read access on products"
+  on products for select
+  to anon, authenticated
+  using (true);
+
+create policy "Allow public insert access on products"
+  on products for insert
+  to anon, authenticated
+  with check (true);
+
+-- 创建索引
+create index if not exists idx_products_scrape_id on products(scrape_id);
+create index if not exists idx_products_name on products(name);
+create index if not exists idx_products_brand on products(brand);

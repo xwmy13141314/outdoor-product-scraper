@@ -1,0 +1,30 @@
+-- 创建产品抓取记录表
+create table if not exists product_scrapes (
+  id uuid primary key default gen_random_uuid(),
+  url text not null,
+  title text,
+  content text,
+  html_content text,
+  status text not null check (status in ('pending', 'success', 'failed')),
+  error_message text,
+  scraped_at timestamptz default now(),
+  created_at timestamptz default now()
+);
+
+-- 启用 RLS
+alter table product_scrapes enable row level security;
+
+-- 创建策略：允许所有人读取和插入（简化演示，生产环境应该添加认证）
+create policy "Allow public read access"
+  on product_scrapes for select
+  to anon, authenticated
+  using (true);
+
+create policy "Allow public insert access"
+  on product_scrapes for insert
+  to anon, authenticated
+  with check (true);
+
+-- 为查询优化创建索引
+create index if not exists idx_product_scrapes_created_at on product_scrapes(created_at desc);
+create index if not exists idx_product_scrapes_status on product_scrapes(status);

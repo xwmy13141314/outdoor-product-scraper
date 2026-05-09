@@ -1,0 +1,18 @@
+-- 为 products 表添加更多详细字段
+alter table products 
+add column if not exists display_type text,
+add column if not exists display_protection text,
+add column if not exists cpu_details text,
+add column if not exists waterproof_rating text,
+add column if not exists battery_life text,
+add column if not exists fast_charging text,
+add column if not exists wireless_charging boolean,
+add column if not exists nfc boolean,
+add column if not exists usb_type text,
+add column if not exists audio_jack boolean,
+add column if not exists colors jsonb,
+add column if not exists price text,
+add column if not exists special_features jsonb;
+
+-- 添加索引
+create index if not exists idx_products_waterproof on products(waterproof_rating) where waterproof_rating is not null;
